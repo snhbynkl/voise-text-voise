@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bento-bg: #0b0c10;
+  --color-bento-card: #1f2833;
+  --color-bento-accent: #66fcf1;
+  --color-bento-text: #c5c6c7;
+  --color-bento-highlight: #45a29e;
+}
+
+@layer base {
+  body {
+    @apply bg-bento-bg text-bento-text antialiased;
+  }
+}
+
+.bento-card {
+  @apply bg-bento-card rounded-2xl p-6 border border-white/5 flex flex-col transition-all duration-300;
+}
+
+.bento-card:hover {
+  @apply border-bento-accent/20 bg-white/[0.02];
+}
+
+.bento-gradient {
+  @apply bg-linear-to-br from-[#1f2833] to-[#161b22] border-bento-highlight/50;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-bento-accent/20 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-bento-accent/40;
+}
+

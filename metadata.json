@@ -1,0 +1,6 @@
+{
+  "name": "AudioTransTurk",
+  "description": "Profesyonel Rusça ses ve video içeriklerini Türkçe'ye çevirip seslendiren yapay zeka aracı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
