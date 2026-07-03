@@ -1,23 +1,29 @@
+import path from 'node:path';
 import express from 'express';
+import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
-import path from 'path';
-import fs from 'fs';
 import dotenv from 'dotenv';
+import { registerApi } from './server/api';
+import { loadRuntimeConfig } from './server/config';
 
 dotenv.config();
 
-const app = express();
-const PORT = 3000;
+async function startServer(): Promise<void> {
+  const app = express();
+  const config = loadRuntimeConfig();
+  await registerApi(app, config);
 
-// API Routes (Frontend handles Gemini calls directly)
-
-async function startServer() {
-  // Health check
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+  app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+    if (error instanceof multer.MulterError) {
+      response.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: error.message });
+      return;
+    }
+    console.error(error);
+    response.status(500).json({
+      error: error instanceof Error ? error.message : 'Beklenmeyen sunucu hatası.',
+    });
   });
 
-  // Vite middleware setup
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -27,14 +33,17 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get('*all', (_request, response) => {
+      response.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(config.port, '127.0.0.1', () => {
+    console.log(`Server running on http://localhost:${config.port}`);
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
