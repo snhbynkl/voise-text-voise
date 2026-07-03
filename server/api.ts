@@ -89,7 +89,10 @@ export async function registerApi(app: Express, config: RuntimeConfig): Promise<
           chunkSize: config.voiceCloneChunkSize,
           pauseMs: config.voiceCloneChunkPauseMs,
           seed: config.voiceCloneSeed,
+          device: config.voiceCloneDevice,
+          model: config.voiceCloneModel,
         },
+        coquiTermsAccepted: process.env.COQUI_TOS_AGREED?.trim() === '1',
       },
     });
   });

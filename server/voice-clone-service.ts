@@ -67,6 +67,8 @@ export class VoiceCloneQueue {
           VOICE_CLONE_CHUNK_SIZE: String(this.config.voiceCloneChunkSize),
           VOICE_CLONE_CHUNK_PAUSE_MS: String(this.config.voiceCloneChunkPauseMs),
           VOICE_CLONE_SEED: String(this.config.voiceCloneSeed),
+          VOICE_CLONE_DEVICE: this.config.voiceCloneDevice,
+          VOICE_CLONE_MODEL: this.config.voiceCloneModel,
           PYTHONIOENCODING: 'utf-8',
           PYTHONUTF8: '1',
         },
