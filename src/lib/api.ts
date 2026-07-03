@@ -1,5 +1,13 @@
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
+export interface JobProgress {
+  stage: string;
+  current: number;
+  total: number;
+  percent: number;
+  message: string;
+}
+
 export interface ProcessResult {
   originalTranscription: string;
   turkishTranslation: string;
@@ -20,6 +28,7 @@ interface JobResponse<TResult> {
   jobId: string;
   status: JobStatus;
   error?: string;
+  progress?: JobProgress;
   result?: TResult;
 }
 
@@ -49,9 +58,11 @@ export async function createVoiceCloneJob(
 export async function waitForJob<TResult>(
   statusUrl: string,
   signal: AbortSignal,
+  onUpdate?: (job: JobResponse<TResult>) => void,
 ): Promise<TResult> {
   while (true) {
     const job = await jsonRequest<JobResponse<TResult>>(statusUrl, { signal });
+    onUpdate?.(job);
     if (job.status === 'completed' && job.result) return job.result;
     if (job.status === 'failed') throw new Error(job.error || 'Arka plan işi başarısız oldu.');
     await new Promise<void>((resolve, reject) => {

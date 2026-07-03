@@ -15,6 +15,7 @@ import {
   createGeminiJob,
   createVoiceCloneJob,
   waitForJob,
+  type JobProgress,
   type ProcessResult,
   type VoiceCloneResult,
 } from './lib/api';
@@ -28,6 +29,7 @@ export default function App() {
   const [media, setMedia] = useState<File | null>(null);
   const [results, setResults] = useState<ProcessResult | null>(null);
   const [voiceResult, setVoiceResult] = useState<VoiceCloneResult | null>(null);
+  const [voiceProgress, setVoiceProgress] = useState<JobProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -39,6 +41,7 @@ export default function App() {
     setMedia(null);
     setResults(null);
     setVoiceResult(null);
+    setVoiceProgress(null);
     setError(null);
   };
 
@@ -49,6 +52,7 @@ export default function App() {
     setError(null);
     setResults(null);
     setVoiceResult(null);
+    setVoiceProgress(null);
 
     try {
       setState('translating');
@@ -67,6 +71,7 @@ export default function App() {
       const clonedVoice = await waitForJob<VoiceCloneResult>(
         cloneJob.statusUrl,
         controller.signal,
+        (job) => setVoiceProgress(job.progress || null),
       );
       setVoiceResult(clonedVoice);
       setState('completed');
@@ -157,7 +162,11 @@ export default function App() {
               </div>
               <div className="w-full space-y-4">
                 <Progress label="Gemini transkripsiyon ve çeviri" status={state === 'translating' ? 'active' : 'completed'} />
-                <Progress label="Python XTTS ses klonlama" status={state === 'cloning' ? 'active' : 'waiting'} />
+                <Progress
+                  label="Python XTTS ses klonlama"
+                  status={state === 'cloning' ? 'active' : 'waiting'}
+                  progress={voiceProgress}
+                />
               </div>
             </motion.section>
           )}
@@ -237,16 +246,30 @@ function FilePicker({ step, title, detail, accept, file, icon: Icon, disabled, o
   );
 }
 
-function Progress({ label, status }: { label: string; status: 'waiting' | 'active' | 'completed' }) {
+function Progress({
+  label,
+  status,
+  progress,
+}: {
+  label: string;
+  status: 'waiting' | 'active' | 'completed';
+  progress?: JobProgress | null;
+}) {
+  const width = status === 'completed' ? 100 : status === 'active' ? (progress?.percent || 3) : 0;
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-xs uppercase tracking-widest">
         <span className={status === 'waiting' ? 'text-white/20' : 'text-bento-accent'}>{label}</span>
-        <span className="text-white/30">{status === 'active' ? 'Aktif' : status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}</span>
+        <span className="text-white/30">
+          {status === 'active' ? `%${width}` : status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
+        </span>
       </div>
       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-        <div className={cn('h-full bg-bento-accent transition-all', status === 'completed' ? 'w-full' : status === 'active' ? 'w-1/2 animate-pulse' : 'w-0')} />
+        <div className="h-full bg-bento-accent transition-all duration-500" style={{ width: `${width}%` }} />
       </div>
+      {status === 'active' && progress?.message && (
+        <p className="text-[11px] text-white/40">{progress.message}</p>
+      )}
     </div>
   );
 }
