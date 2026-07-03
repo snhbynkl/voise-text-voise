@@ -5,12 +5,21 @@ import { randomUUID } from 'node:crypto';
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type JobType = 'gemini' | 'voice-clone';
 
+export interface JobProgress {
+  stage: string;
+  current: number;
+  total: number;
+  percent: number;
+  message: string;
+}
+
 export interface JobRecord<TResult = unknown, TPayload = unknown> {
   jobId: string;
   type: JobType;
   status: JobStatus;
   createdAt: string;
   updatedAt: string;
+  progress?: JobProgress;
   error?: string;
   result?: TResult;
   payload?: TPayload;

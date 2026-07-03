@@ -85,6 +85,11 @@ export async function registerApi(app: Express, config: RuntimeConfig): Promise<
         modulePath: config.voiceCloneModule,
         moduleConfigured: fileExists(config.voiceCloneModule),
         ffmpegAvailable,
+        longForm: {
+          chunkSize: config.voiceCloneChunkSize,
+          pauseMs: config.voiceCloneChunkPauseMs,
+          seed: config.voiceCloneSeed,
+        },
       },
     });
   });

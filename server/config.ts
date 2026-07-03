@@ -11,8 +11,16 @@ export interface RuntimeConfig {
   port: number;
   pythonExe: string;
   voiceCloneModule: string;
+  voiceCloneChunkPauseMs: number;
+  voiceCloneChunkSize: number;
+  voiceCloneSeed: number;
   voiceCloneScript: string;
   voiceCloneWorkdir: string;
+}
+
+function boundedInt(value: string | undefined, fallback: number, minimum: number, maximum: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isInteger(parsed) && parsed >= minimum && parsed <= maximum ? parsed : fallback;
 }
 
 export function loadRuntimeConfig(): RuntimeConfig {
@@ -28,6 +36,9 @@ export function loadRuntimeConfig(): RuntimeConfig {
     voiceCloneModule: configuredModule
       ? path.resolve(configuredModule)
       : path.join(workdir, 'clone_voice.py'),
+    voiceCloneChunkPauseMs: boundedInt(process.env.VOICE_CLONE_CHUNK_PAUSE_MS, 180, 0, 2_000),
+    voiceCloneChunkSize: boundedInt(process.env.VOICE_CLONE_CHUNK_SIZE, 220, 80, 2_000),
+    voiceCloneSeed: boundedInt(process.env.VOICE_CLONE_SEED, 0, 0, 2_147_483_647),
     voiceCloneScript: resolveFromRoot(
       process.env.VOICE_CLONE_SCRIPT,
       'scripts/run_clone_voice_module.py',
