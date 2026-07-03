@@ -1,0 +1,2 @@
+# Install the matching Torch/Torchaudio build first; see docs/LOCAL_VOICE_CLONE.md.
+coqui-tts==0.27.5

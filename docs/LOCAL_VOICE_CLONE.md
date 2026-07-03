@@ -1,85 +1,85 @@
-# Local Voice Clone Setup
+# Integrated Local Voice Clone Runtime
 
-AudioTransTurk keeps Gemini translation on the Node backend and delegates voice cloning to an existing local Python module. The repository does not contain or duplicate the Coqui XTTS model implementation.
+AudioTransTurk contains its Python integration under `python/voice_clone/`. The repository tracks the lazy-loaded XTTS wrapper and its dependency manifest, but never model weights, virtual environments, reference media, or generated audio.
 
-## Windows configuration
+## Windows quick start
 
-Copy `.env.example` to `.env`, then use absolute Windows paths:
+Requirements: Python 3.11, Node.js, and `ffmpeg` on `PATH`.
+
+```powershell
+cd C:\Users\YeniKullanici\projects\voise-text-voise
+
+# NVIDIA CUDA 12.4 (RTX 40-series)
+.\scripts\setup_voice_clone.ps1 -Device cuda
+
+# Or CPU-only
+# .\scripts\setup_voice_clone.ps1 -Device cpu
+
+Copy-Item .env.example .env
+notepad .env
+npm install
+npm run dev
+```
+
+Set `GEMINI_API_KEY` in `.env`. Review the Coqui model terms yourself; only then set `COQUI_TOS_AGREED=1`. The application intentionally does not accept third-party terms on the user's behalf.
+
+Default repo-contained configuration:
 
 ```dotenv
-GEMINI_API_KEY=your-key
-VOICE_CLONE_PYTHON_EXE=C:\Users\YeniKullanici\ses-clon-öykü\.venv\Scripts\python.exe
+VOICE_CLONE_PYTHON_EXE=.venv/Scripts/python.exe
 VOICE_CLONE_SCRIPT=scripts/run_clone_voice_module.py
-VOICE_CLONE_WORKDIR=C:\Users\YeniKullanici\ses-clon-öykü
-VOICE_CLONE_MODULE=C:\Users\YeniKullanici\ses-clon-öykü\clone_voice.py
+VOICE_CLONE_WORKDIR=python/voice_clone
+VOICE_CLONE_MODULE=
+VOICE_CLONE_DEVICE=auto
+VOICE_CLONE_MODEL=tts_models/multilingual/multi-dataset/xtts_v2
 VOICE_CLONE_CHUNK_SIZE=220
 VOICE_CLONE_CHUNK_PAUSE_MS=180
 VOICE_CLONE_SEED=0
-DATA_DIR=data
-PORT=3000
+COQUI_TOS_AGREED=1
 ```
 
-`VOICE_CLONE_MODULE` may be empty when `clone_voice.py` is directly inside `VOICE_CLONE_WORKDIR`. Relative `VOICE_CLONE_SCRIPT` and `DATA_DIR` values resolve from the AudioTransTurk repository root.
+`VOICE_CLONE_MODULE` may stay empty because `clone_voice.py` is inside `VOICE_CLONE_WORKDIR`. Absolute external module paths remain supported for custom engines.
 
-## Python module contract
+On Linux/macOS, create `.venv` manually and use `.venv/bin/python` for `VOICE_CLONE_PYTHON_EXE`. Install the appropriate Torch build first, followed by `pip install -r python/requirements.txt`.
 
-The external module must expose this callable:
+## Runtime design
+
+The integrated module preserves the stable adapter contract:
 
 ```python
 def clone_voice(text, speaker_wav, output_wav="output.wav", language="tr"):
     ...
 ```
 
-The adapter imports the module dynamically, converts the uploaded reference to mono 24 kHz PCM WAV with ffmpeg, and invokes:
+- Coqui and Torch import lazily, so lint, tests, and server startup do not load the model.
+- The model is cached once per adapter process and reused for every long-form chunk.
+- `VOICE_CLONE_DEVICE=auto` selects CUDA when available and otherwise uses CPU.
+- Reference files and output paths are validated before inference.
+- The model cache is released when the adapter process exits; model weights remain in the standard external Hugging Face/Coqui cache.
 
-```python
-clone_voice(text, normalized_reference, output_wav, "tr")
-```
-
-Install Python/Coqui/Torch dependencies only in the prototype virtual environment. XTTS model weights remain outside this repository and may download on first use. For long-form performance, the external module should cache its loaded model at module scope so repeated `clone_voice` calls in the same adapter process do not reload XTTS.
-
-## Long-form generation
-
-The adapter applies a deterministic pipeline inspired by the large-text workflow in the MIT-licensed [Chatterbox TTS Server](https://github.com/devnen/Chatterbox-TTS-Server):
-
-1. Normalize whitespace and split at paragraph/sentence boundaries.
-2. Pack sentences into bounded chunks; hard-wrap pathological long sentences.
-3. Generate every chunk in the same Python process using the same normalized reference.
-4. Normalize each result to mono 24 kHz PCM WAV.
-5. Apply short edge fades and join chunks with a configurable silence gap.
-6. Emit machine-readable progress events that are persisted in `job.json` and displayed by the UI.
-
-Runtime controls:
-
-- `VOICE_CLONE_CHUNK_SIZE`: target maximum characters per chunk, `80–2000` (default `220`).
-- `VOICE_CLONE_CHUNK_PAUSE_MS`: silence between chunks, `0–2000` ms (default `180`).
-- `VOICE_CLONE_SEED`: `0` keeps engine-default randomness; a positive value seeds Python, NumPy and Torch, incremented per chunk for reproducible jobs.
-
-These features reuse architectural ideas, not Chatterbox model or engine code. AudioTransTurk continues to call the configured external `clone_voice()` implementation.
+The adapter uses a deterministic long-form pipeline inspired by the MIT-licensed [Chatterbox TTS Server](https://github.com/devnen/Chatterbox-TTS-Server): sentence-aware chunking, per-chunk progress, 24 kHz mono normalization, edge fades, configurable pauses, and optional deterministic seeds. No Chatterbox engine/model code is embedded.
 
 ## Runtime flow
 
-1. The browser uploads Russian media to `POST /api/gemini/jobs`.
-2. Node uploads it to the Gemini Files API, polls until ready, and stores Russian/Turkish text under `DATA_DIR/outputs/<jobId>`.
-3. The browser sends Turkish text and the reference audio to `POST /api/local-voice/clone`.
-4. A single-worker FIFO queue starts the configured Python interpreter and long-form adapter.
-5. The browser polls persisted chunk progress and plays `cloned_turkish.wav` when complete.
+1. The browser uploads Russian media to the backend Gemini job API.
+2. Gemini returns Russian transcription and Turkish translation.
+3. The browser submits Turkish text and reference audio to the local voice job API.
+4. The FIFO worker launches the repo `.venv`, adapter, and integrated XTTS module.
+5. Chunk progress is persisted in `DATA_DIR/outputs/<jobId>/job.json` and displayed in the UI.
+6. The final `cloned_turkish.wav` is available for playback and download.
 
-Job state is persisted in `job.json`. On server restart, incomplete jobs are marked failed. Successful source uploads are deleted; output text, WAV, and metadata remain. Failed uploads remain for diagnosis.
+Successful source uploads are deleted. Outputs and metadata remain. Interrupted jobs become `failed` after restart.
 
-## Prerequisites and checks
+## Diagnostics and verification
 
 ```powershell
 ffmpeg -version
-C:\Users\YeniKullanici\ses-clon-öykü\.venv\Scripts\python.exe C:\Users\YeniKullanici\ses-clon-öykü\test_setup.py
-npm install
+.\.venv\Scripts\python.exe python\voice_clone\diagnostics.py
 npm test
 npm run lint
 npm run build
 npm run dev
-Invoke-RestMethod http://localhost:3000/api/health | ConvertTo-Json -Depth 5
+Invoke-RestMethod http://localhost:3000/api/health | ConvertTo-Json -Depth 6
 ```
 
-The health response must report `geminiConfigured`, `scriptConfigured`, `pythonAvailable`, `moduleConfigured`, and `ffmpegAvailable` as `true`. CPU-only XTTS can be slow; verify the complete flow with short media and a clean 30–90 second single-speaker reference before using long files.
-
-Runtime files, media, `.env`, API keys, and model files must not be committed.
+Health must report `pythonAvailable`, `scriptConfigured`, `moduleConfigured`, `ffmpegAvailable`, and `coquiTermsAccepted` as `true`. Start with short media and a clean 30–90 second single-speaker reference.

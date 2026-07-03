@@ -1,20 +1,27 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# AudioTransTurk
 
-# Run and deploy your AI Studio app
+Local-first Russian-to-Turkish media localization with Gemini transcription/translation and repository-contained Coqui XTTS voice cloning.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/1cd92fba-1fa3-4ecd-afd2-dfe43758a227
+- Server-side Gemini media processing; API keys are not bundled into the browser.
+- Turkish voice cloning from a user-provided reference recording.
+- Sentence-aware long-form chunking, progress reporting, deterministic seeds, and stitched 24 kHz WAV output.
+- Persistent background job metadata and a single-worker queue for predictable GPU usage.
+- Integrated Python runtime, Windows setup automation, tests, and GitHub Actions CI.
 
-## Run Locally
+## Windows quick start
 
-**Prerequisites:**  Node.js
+```powershell
+git clone https://github.com/snhbynkl/voise-text-voise.git
+cd voise-text-voise
+.\scripts\setup_voice_clone.ps1 -Device cuda
+Copy-Item .env.example .env
+notepad .env
+npm install
+npm run dev
+```
 
+Add `GEMINI_API_KEY` to `.env`. Review the Coqui terms before setting `COQUI_TOS_AGREED=1`.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Open `http://localhost:3000`. See [Local Voice Clone Setup](docs/LOCAL_VOICE_CLONE.md) for CPU installation, configuration, diagnostics, and runtime details.
