@@ -22,17 +22,32 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 
 & $venvPython -m ensurepip --upgrade
 & $venvPython -m pip install --upgrade pip setuptools wheel
+$uvCommand = Get-Command uv -ErrorAction SilentlyContinue
 
 if ($Device -eq 'cuda') {
     Write-Host 'Installing PyTorch 2.6.0 with CUDA 12.4 support...'
-    & $venvPython -m pip install torch==2.6.0+cu124 torchaudio==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+    if ($uvCommand) {
+        & $uvCommand.Source pip install --python $venvPython torch==2.6.0+cu124 torchaudio==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+    } else {
+        & $venvPython -m pip install torch==2.6.0+cu124 torchaudio==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+    }
 } else {
     Write-Host 'Installing CPU-only PyTorch 2.6.0...'
-    & $venvPython -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+    if ($uvCommand) {
+        & $uvCommand.Source pip install --python $venvPython torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+    } else {
+        & $venvPython -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+    }
 }
 if ($LASTEXITCODE -ne 0) { throw 'PyTorch installation failed.' }
 
-& $venvPython -m pip install -r $requirements
+if ($uvCommand) {
+    Write-Host 'Installing the pinned Coqui runtime with uv...'
+    & $uvCommand.Source pip install --python $venvPython -r $requirements
+} else {
+    Write-Host 'uv not found; installing the pinned Coqui runtime with pip...'
+    & $venvPython -m pip install -r $requirements
+}
 if ($LASTEXITCODE -ne 0) { throw 'Coqui TTS installation failed.' }
 
 Write-Host 'Runtime diagnostics:'
