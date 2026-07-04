@@ -5,6 +5,7 @@ AudioTransTurk contains its Python integration under `python/voice_clone/`. The 
 ## Windows quick start
 
 Requirements: Python 3.11, Node.js, and `ffmpeg` on `PATH`.
+If `uv` is installed, the setup script uses it for faster deterministic dependency resolution; otherwise it falls back to `pip`.
 
 ```powershell
 cd C:\Users\YeniKullanici\projects\voise-text-voise
